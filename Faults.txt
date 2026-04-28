@@ -1,0 +1,27 @@
+Process Faults
+	•	Agitator power loss: RPM drops 80% → kLa halves, DO crashes below 10% in 30min.
+	•	Sparger blockage: Air stones clog → OTR → 20%, hypoxic stress → lactate buildup.
+	•	Gas supply failure: O2-enriched air stops → DO → 0% within 1h → anaerobic shift.
+	•	Foam overflow via sparger: Excessive foam blocks gas inlet → intermittent DO spikes/drops.
+	•	Broth viscosity surge: Biomass >50g/L → kLa drops 60% → DO gradient, poor transfer.
+	•	Anti-foam over-injection: Surface tension crash → bubble coalescence → kLa -40%.
+	•	Impeller shear damage: High RPM >500 → cell lysis → OUR spikes, DO controller hunts.
+	•	Coolant leak to sparge line: Cold air → supersat DO >150%, oxidative stress.
+	•	Exhaust filter clog: Backpressure → reduced sparge flow → DO undershoot.
+	•	Seed train hypoxia: Low-DO inoculum → lag phase + low initial OUR → DO overshoot.
+Sensor/Actuator Faults
+	•	DO probe bias: Reads 20% low → excess aeration, foaming/overhead costs.
+	•	PID tuning fault: Kp=10x too high → temp oscillations ±5°C.
+	•	Antifoam overdose: Surface tension drops → kLa reduced 30%, mass transfer loss.
+pH Excursions:
+	•	pH >8.0: Ammonia toxicity → protein misfolding, 25% viability loss.
+	•	pH <5.5: Enzyme denaturation → growth halt, lactate overproduction.
+	•	pH oscillation ±0.5: Base/acid pump hunting → cell stress cycles.
+DO Excursions:
+	•	DO <10% >2h: Hypoxic stress → lactate shift, titer drops 40%.
+	•	DO >60%: Oxidative damage → ROS buildup, apoptosis cascade.
+	•	DO setpoint hunting: PID overshoot → boom-bust cycles, shear damage.
+Temperature Excursions:
+	•	Temp >42°C: Heat shock proteins → inclusion bodies, 30% yield loss.
+	•	Temp <28°C: Membrane rigidity → nutrient uptake fails, lag phase 12h.
+	•	Temp ramp >1°C/h: Thermal gradients → uneven growth zones.

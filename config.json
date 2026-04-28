@@ -1,0 +1,106 @@
+{
+  "_comment": "Bioreactor batch simulation configuration. All time units in hours, concentrations in g/L, pressure in bar, temperature in °C, DO in % air saturation.",
+
+  "simulation": {
+    "duration_hours": 48,
+    "dt_minutes": 1,
+    "seed": 42,
+    "record_every_n_steps": 1,
+    "output_csv": "bioreactor_run.csv",
+    "print_summary_interval_hours": 6
+  },
+
+  "initial_conditions": {
+    "viable_cell_density": 500000,
+    "dead_cell_density": 0,
+    "substrate_g_L": 10.0,
+    "lactate_g_L": 0.0
+  },
+
+  "setpoints": {
+    "pH": 7.2,
+    "temperature_C": 37.0,
+    "pressure_bar": 1.2,
+    "dissolved_oxygen_pct": 40.0
+  },
+
+  "cpp_limits": {
+    "pH": {
+      "min": 6.5,
+      "max": 7.8,
+      "alert_low": 6.9,
+      "alert_high": 7.5
+    },
+    "temperature_C": {
+      "min": 34.0,
+      "max": 40.0,
+      "alert_low": 36.0,
+      "alert_high": 38.5
+    },
+    "pressure_bar": {
+      "min": 0.8,
+      "max": 2.0,
+      "alert_low": 1.0,
+      "alert_high": 1.5,
+      "floor": 0.5
+    },
+    "dissolved_oxygen_pct": {
+      "min": 10.0,
+      "max": 100.0,
+      "alert_low": 20.0,
+      "alert_high": 90.0
+    }
+  },
+
+  "kinetics": {
+    "mu_max": 0.045,
+    "Ks": 0.5,
+    "Kd_base": 0.008,
+    "Ki_lactate": 15.0,
+    "Ko_do": 15.0,
+    "pH_optimum": 7.2,
+    "pH_sigma": 0.4,
+    "temperature_optimum_C": 37.0,
+    "temperature_sigma": 1.5,
+    "temperature_hard_min_C": 30.0,
+    "temperature_hard_max_C": 43.0,
+    "pressure_optimum_bar": 1.2,
+    "pressure_sigma": 0.3,
+    "stress_multipliers": {
+      "pH": 2.0,
+      "temperature": 3.0,
+      "dissolved_oxygen": 4.0,
+      "pressure": 1.5
+    },
+    "death_rate_cap": 0.5
+  },
+
+  "process_dynamics": {
+    "time_constants_hours": {
+      "pH": 0.5,
+      "temperature": 1.0,
+      "pressure": 0.25,
+      "dissolved_oxygen": 0.3
+    },
+    "noise_std_per_sqrt_hour": {
+      "pH": 0.02,
+      "temperature": 0.05,
+      "pressure": 0.005,
+      "dissolved_oxygen": 0.5
+    },
+    "metabolic_effects": {
+      "pH_drop_per_1e6_cells_per_hour": 0.002,
+      "heat_per_1e6_cells_per_hour": 0.001,
+      "our_mmol_per_cell_per_hour": 3.5e-10
+    }
+  },
+
+  "bioreactor": {
+    "volume_L": 10.0,
+    "feed_rate_L_per_hour": 0.02,
+    "feed_glucose_g_L": 50.0,
+    "yield_cells_per_g_glucose": 2e8,
+    "lactate_production_g_per_cell_per_hour": 3e-10,
+    "dead_cell_lysis_rate_per_hour": 0.02
+  }
+}
