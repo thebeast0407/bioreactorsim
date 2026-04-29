@@ -127,7 +127,10 @@ class KineticModel:
             * self._do_factor(state.dissolved_oxygen)
             * self._pressure_factor(state.pressure)
         )
-        return max(mu, 0.0)
+        # Lag-phase ramp: cells take ~2-4 h to adapt after inoculation.
+        # 1 - exp(-0.6*t): t=0→0, t=1h→0.45, t=2h→0.70, t=4h→0.91, t=8h→0.99
+        lag = 1.0 - math.exp(-0.6 * max(0.0, state.time))
+        return max(mu * lag, 0.0)
 
     def death_rate(self, state: BioreactorState) -> float:
         stress = (
@@ -136,7 +139,10 @@ class KineticModel:
             * (1.0 + self.sm["dissolved_oxygen"] * max(0.0, 1.0 - self._do_factor(state.dissolved_oxygen)))
             * (1.0 + self.sm["pressure"]        * max(0.0, 1.0 - self._pressure_factor(state.pressure)))
         )
-        return min(self.Kd_base * stress, self.kd_cap)
+        # Death ramp: background death rate is very low at inoculation, rises over ~6 h.
+        # 1 - exp(-0.35*t): t=0→0, t=2h→0.50, t=4h→0.75, t=8h→0.94
+        death_ramp = 1.0 - math.exp(-0.35 * max(0.0, state.time))
+        return min(self.Kd_base * stress * death_ramp, self.kd_cap)
 
 
 # ── CPP dynamics ──────────────────────────────────────────────────────────────
@@ -430,6 +436,7 @@ class FaultEngine:
         if "q_lac"     in o: sim.q_lac    = o["q_lac"]
         if "kd_lysis"  in o: sim.kd_lysis = o["kd_lysis"]
         f["_recovered"] = True
+        f["_recovered_at_h"] = sim.state.time
         t = sim.state.time
         self.recovery_log.append((t, f["id"], f["name"]))
         print(
@@ -713,10 +720,12 @@ class BioreactorSimulator:
         s.viable_cell_density = max(0.0, s.viable_cell_density + dXv)
         s.dead_cell_density   = max(0.0, s.dead_cell_density + dXd)
 
-        consumption   = (mu / self.Y_xs) * s.viable_cell_density * dt
+        # VCD is stored as cells/mL; Y_xs and q_lac use cells/L, so multiply by 1000.
+        Xv_L          = s.viable_cell_density * 1000.0
+        consumption   = (mu / self.Y_xs) * Xv_L * dt
         feed_contrib  = self.feed_rate * self.S_feed / self.V * dt
         s.substrate   = max(0.0, s.substrate - consumption + feed_contrib)
-        s.lactate    += self.q_lac * s.viable_cell_density * dt
+        s.lactate    += self.q_lac * Xv_L * dt
 
         total = s.viable_cell_density + s.dead_cell_density
         s.viability = 100.0 * s.viable_cell_density / total if total > 0 else 0.0

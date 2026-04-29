@@ -11,9 +11,9 @@
   },
 
   "initial_conditions": {
-    "viable_cell_density": 500000,
+    "viable_cell_density": 1500000,
     "dead_cell_density": 0,
-    "substrate_g_L": 10.0,
+    "substrate_g_L": 12.0,
     "lactate_g_L": 0.0
   },
 
@@ -53,10 +53,10 @@
   },
 
   "kinetics": {
-    "mu_max": 0.045,
-    "Ks": 0.5,
-    "Kd_base": 0.008,
-    "Ki_lactate": 15.0,
+    "mu_max": 0.065,
+    "Ks": 0.6,
+    "Kd_base": 0.006,
+    "Ki_lactate": 10.0,
     "Ko_do": 15.0,
     "pH_optimum": 7.2,
     "pH_sigma": 0.4,
@@ -97,10 +97,10 @@
 
   "bioreactor": {
     "volume_L": 10.0,
-    "feed_rate_L_per_hour": 0.02,
+    "feed_rate_L_per_hour": 0.005,
     "feed_glucose_g_L": 50.0,
-    "yield_cells_per_g_glucose": 2e8,
-    "lactate_production_g_per_cell_per_hour": 3e-10,
+    "yield_cells_per_g_glucose": 4e8,
+    "lactate_production_g_per_cell_per_hour": 3e-11,
     "dead_cell_lysis_rate_per_hour": 0.02
   }
 }
