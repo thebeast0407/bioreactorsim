@@ -5,12 +5,17 @@ const IMG_H = 768
 const IMG_ASPECT = IMG_W / IMG_H   // 1.792
 
 // CPP annotation positions as fractions of the rendered image rect
+// anchor: 'center' (default) centers the badge on (x,y).
+//         'left'  pins the badge's LEFT  edge to x (safe near left  edge).
+//         'right' pins the badge's RIGHT edge to x (safe near right edge).
 const CPP_ANNOTATIONS = [
-  { key: 'press', label: 'Pressure',   xFrac: 0.86, yFrac: 0.11, fmt: v => v.toFixed(3), unit: ' bar' },
-  { key: 'pH',    label: 'pH',         xFrac: 0.86, yFrac: 0.30, fmt: v => v.toFixed(2), unit: '' },
-  { key: 'do',    label: 'DO',         xFrac: 0.86, yFrac: 0.52, fmt: v => v.toFixed(1), unit: ' %' },
-  { key: 'temp',  label: 'Temp',       xFrac: 0.86, yFrac: 0.72, fmt: v => v.toFixed(1), unit: ' °C' },
-  { key: 'vcd',   label: 'VCD',        xFrac: 0.10, yFrac: 0.30, fmt: v => (v / 1e6).toFixed(2), unit: ' ×10⁶/mL' },
+  // Right-side sensors — staggered inward so badges don't stack
+  { key: 'press', label: 'Pressure', xFrac: 0.99, yFrac: 0.06, fmt: v => v.toFixed(3), unit: ' bar',            anchor: 'right' },
+  { key: 'pH',    label: 'pH',       xFrac: 0.99, yFrac: 0.27, fmt: v => v.toFixed(2), unit: '',                anchor: 'right' },
+  { key: 'do',    label: 'DO',       xFrac: 0.99, yFrac: 0.50, fmt: v => v.toFixed(1), unit: ' %',              anchor: 'right' },
+  { key: 'temp',  label: 'Temp',     xFrac: 0.99, yFrac: 0.73, fmt: v => v.toFixed(1), unit: ' °C',             anchor: 'right' },
+  // Left-side — VCD pinned to the left edge with a small inset
+  { key: 'vcd',   label: 'VCD',      xFrac: 0.01, yFrac: 0.15, fmt: v => (v / 1e6).toFixed(2), unit: ' ×10⁶/mL', anchor: 'left' },
 ]
 
 // Which CPP keys are affected by each fault id
@@ -127,13 +132,18 @@ export default function BioreactorModel({ state, activeFaults }) {
       />
 
       {/* CPP badges */}
-      {imgRect.w > 0 && CPP_ANNOTATIONS.map(({ key, label, xFrac, yFrac, fmt, unit }) => {
+      {imgRect.w > 0 && CPP_ANNOTATIONS.map(({ key, label, xFrac, yFrac, fmt, unit, anchor }) => {
         const val   = vals[key]
         const st    = cppStatus(key, val)
         const c     = STATUS_STYLE[st]
         const faults = faultedCPP[key] || []
         const hasFault = faults.length > 0
         const faultColor = hasFault ? (CAT_COLOR[faults[0].category] || '#ef4444') : null
+        // anchor controls which edge of the badge aligns to the x position:
+        //   'left'   → badge starts at x (safe near left edge of image)
+        //   'right'  → badge ends   at x (safe near right edge of image)
+        //   'center' → badge is centered on x (default)
+        const xShift = anchor === 'left' ? '0%' : anchor === 'right' ? '-100%' : '-50%'
 
         return (
           <div
@@ -142,7 +152,7 @@ export default function BioreactorModel({ state, activeFaults }) {
               position: 'absolute',
               left: imgRect.left + imgRect.w * xFrac,
               top:  imgRect.top  + imgRect.h * yFrac,
-              transform: 'translate(-50%, -50%)',
+              transform: `translate(${xShift}, -50%)`,
               background: hasFault ? `${faultColor}12` : c.bg,
               border: `1.5px solid ${hasFault ? faultColor : c.border}`,
               borderRadius: 7,

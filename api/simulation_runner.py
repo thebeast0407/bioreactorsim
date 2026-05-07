@@ -77,13 +77,14 @@ class SimulationRunner:
             if step % sim.record_every == 0:
                 sim._record()
 
-            # Recovery auto-timeout: if awaiting and 2 sim-hours elapsed, auto-decline
+            # Recovery auto-timeout: auto-decline after 40% of batch duration
             if sim.fault_engine:
                 t_now = sim.state.time
+                recovery_window = sim.duration_hours * 0.40
                 for f in sim.fault_engine.faults:
                     if f.get("_awaiting_input") and not f.get("_recovered"):
                         elapsed = t_now - f.get("_prompt_time_h", t_now)
-                        if elapsed >= 2.0:
+                        if elapsed >= recovery_window:
                             f["_awaiting_input"] = False
 
             snap = self._build_snapshot(finished=False)
@@ -152,7 +153,7 @@ class SimulationRunner:
                 if f.get("_awaiting_input") and not f.get("_recovered"):
                     rec_name = _bsim.RECOVERY_NAMES.get(f["id"], "Standard Recovery")
                     prompt_t = f.get("_prompt_time_h", t_now)
-                    deadline_h = prompt_t + 2.0
+                    deadline_h = prompt_t + sim.duration_hours * 0.40
                     snap["recovery_prompt"] = {
                         "fault_id":     f["id"],
                         "fault_name":   f["name"],

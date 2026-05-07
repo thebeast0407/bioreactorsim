@@ -132,8 +132,8 @@ export default function ChartPanel({
 
           <Legend
             wrapperStyle={{ fontSize: 10, paddingTop: 2 }}
-            iconType="circle"
-            iconSize={7}
+            iconType="plainline"
+            iconSize={20}
           />
 
           {/* Setpoint baseline */}

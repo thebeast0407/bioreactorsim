@@ -1,0 +1,48 @@
+<div class="wrapper" #container>
+  <div class="placeholder" *ngIf="!state">
+    <span style="font-size:52px;opacity:.3">⚗</span>
+    <p>Waiting for data…</p>
+  </div>
+
+  <ng-container *ngIf="state">
+    <img src="/bioreactormodel.png" alt="Bioreactor schematic" class="img" draggable="false" />
+
+    <!-- CPP badges -->
+    <div *ngFor="let b of badges" class="badge"
+         [style.left.px]="b.left"
+         [style.top.px]="b.top"
+         [style.transform]="b.transform"
+         [style.background]="b.hasFault ? b.faultColor + '12' : b.st.bg"
+         [style.border-color]="b.hasFault ? b.faultColor : b.st.border"
+         [style.box-shadow]="b.hasFault ? '0 0 0 2px ' + b.faultColor + '40, 0 2px 6px rgba(0,0,0,.12)' : '0 1px 4px rgba(0,0,0,.08)'"
+         [style.text-align]="b.transform.startsWith('translate(0') ? 'left' : 'center'"
+         [style.min-width.px]="68">
+      <div class="blabel" [style.color]="b.hasFault ? b.faultColor : b.st.lc">
+        <span *ngIf="b.hasFault" style="font-size:9px">⚠ </span>{{ b.label }}
+      </div>
+      <div class="bvalue" [style.color]="b.hasFault ? b.faultColor : b.st.vc">{{ b.formatted }}</div>
+    </div>
+
+    <!-- Active fault tags -->
+    <div *ngFor="let t of faultTags" class="fault-tag"
+         [style.left.px]="t.left" [style.top.px]="t.top"
+         [style.color]="t.color" [style.border-color]="t.color"
+         [style.border-left-color]="t.color">
+      ⚠ {{ t.label }}
+    </div>
+
+    <!-- Time stamp -->
+    <div class="time-tag">{{ timeLabel }}</div>
+  </ng-container>
+</div>
+
+<style>
+.wrapper { position:relative; width:100%; height:100%; background:#fff; overflow:hidden; }
+.img { width:100%; height:100%; object-fit:contain; display:block; }
+.placeholder { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8; gap:8px; font-size:13px; }
+.badge { position:absolute; border:1.5px solid; border-radius:7px; padding:3px 9px; pointer-events:none; }
+.blabel { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; line-height:1; margin-bottom:2px; }
+.bvalue { font-size:12px; font-weight:700; font-family:monospace; line-height:1; }
+.fault-tag { position:absolute; background:#fff; border:1px solid; border-left:3px solid; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; white-space:nowrap; pointer-events:none; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.time-tag { position:absolute; top:8px; right:8px; background:rgba(255,255,255,.9); border:1px solid #e2e8f0; border-radius:4px; padding:2px 8px; font-size:11px; font-family:monospace; color:#64748b; pointer-events:none; }
+</style>

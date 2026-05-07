@@ -1,0 +1,98 @@
+<div class="fl-container">
+
+  <!-- Header -->
+  <div class="fl-hdr">
+    <span class="fl-hdr-title">⚠ Fault Injection</span>
+    <span class="fl-off-tag" *ngIf="!simRunning">simulation not running</span>
+  </div>
+
+  <div class="fl-body">
+
+    <!-- Left: selector + trigger -->
+    <div class="fl-left">
+
+      <!-- Trigger button -->
+      <button
+        #triggerBtn
+        class="fl-trigger"
+        [disabled]="!simRunning"
+        (click)="toggleDrop($event)"
+      >
+        <span class="fl-trigger-label">
+          {{ selectedFault?.name || '— Select a fault to inject —' }}
+        </span>
+        <span class="fl-arrow" [class.open]="dropOpen">▾</span>
+      </button>
+
+      <!-- Dropdown menu: rendered fixed so it escapes all overflow:hidden ancestors -->
+      <div
+        *ngIf="dropOpen"
+        class="fl-menu"
+        [style.position]="'fixed'"
+        [style.top]="dropStyle['top']"
+        [style.left]="dropStyle['left']"
+        [style.width]="dropStyle['width']"
+        [style.z-index]="dropStyle['zIndex']"
+      >
+        <ng-container *ngFor="let g of groups">
+          <div class="fl-group-hdr" [style.color]="g.color">◆ {{ g.label }}</div>
+          <div
+            *ngFor="let f of g.items"
+            class="fl-opt"
+            [class.selected]="selectedId === f.id"
+            (mousedown)="selectOption(f, $event)"
+          >
+            <span class="fl-opt-dot" [style.background]="g.color"></span>
+            <span class="fl-opt-name">{{ f.name }}</span>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- Trigger button -->
+      <button
+        class="fl-trig-btn"
+        (click)="trigger()"
+        [disabled]="!simRunning || !selectedId || triggerPending"
+      >
+        {{ triggerPending ? 'Triggering…' : '▶  Trigger Fault' }}
+      </button>
+
+      <!-- Selected fault description -->
+      <div class="fl-desc" *ngIf="selectedFault">
+        <span class="fl-dot" [style.background]="catColor(selectedFault.category)"></span>
+        <span>{{ selectedFault.desc }}</span>
+        <span class="fl-meta">Default: t = {{ selectedFault.trigger_default_h }} h</span>
+      </div>
+
+      <div class="fl-err" *ngIf="triggerError">⚠ {{ triggerError }}</div>
+      <div class="fl-ok"  *ngIf="triggerSuccess">✓ {{ triggerSuccess }} triggered</div>
+    </div>
+
+    <!-- Right: fault status -->
+    <div class="fl-right">
+      <div class="fl-status-title">Fault Status</div>
+
+      <div class="fl-empty" *ngIf="!activeFaults.length && !recoveredFaults.length">
+        No faults triggered yet
+      </div>
+
+      <div *ngFor="let f of activeFaults" class="fl-row"
+           [style.border-left-color]="catColor(f.category)">
+        <span class="fl-sicon" [style.color]="catColor(f.category)">⚠</span>
+        <div>
+          <div class="fl-sname" [style.color]="catColor(f.category)">{{ f.name }}</div>
+          <div class="fl-smeta">Active · t = {{ f.triggered_at_h.toFixed(1) }} h</div>
+        </div>
+      </div>
+
+      <div *ngFor="let f of recoveredFaults" class="fl-row" style="border-left-color:#22c55e">
+        <span class="fl-sicon" style="color:#22c55e">✓</span>
+        <div>
+          <div class="fl-sname" style="color:#15803d">{{ f.name }}</div>
+          <div class="fl-smeta">Recovered</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

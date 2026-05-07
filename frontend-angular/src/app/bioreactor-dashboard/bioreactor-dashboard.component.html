@@ -1,0 +1,157 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     BioreactorDashboardComponent — reusable self-contained component
+     Stage 1: Config form   (stage === 'config')
+     Stage 2: Live dashboard (stage === 'dashboard')
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ── Config stage ────────────────────────────────────────────────────── -->
+<ng-container *ngIf="stage === 'config'">
+  <div class="bd-page">
+    <div class="bd-card">
+
+      <div class="bd-header">
+        <span class="bd-logo">⚗</span>
+        <div>
+          <div class="bd-title">Bioreactor Simulation</div>
+          <div class="bd-sub">Configure your batch run and start the simulation</div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="bd-err" *ngIf="cfgError">{{ cfgError }}</div>
+
+      <!-- Batch metadata -->
+      <div class="bd-section">
+        <div class="bd-section-label">Batch Information</div>
+        <div class="bd-grid2">
+          <label class="bd-field">
+            Batch ID
+            <input [(ngModel)]="cfgBatchId" placeholder="Auto-generated" />
+          </label>
+          <label class="bd-field">
+            Product Name
+            <input [(ngModel)]="cfgProduct" placeholder="e.g. mAb-001" />
+          </label>
+          <label class="bd-field">
+            Order No
+            <input [(ngModel)]="cfgOrderNo" placeholder="e.g. ORD-2025-001" />
+          </label>
+        </div>
+      </div>
+
+      <div class="bd-divider"></div>
+
+      <!-- Simulation parameters -->
+      <div class="bd-section">
+        <div class="bd-section-label">Simulation Parameters</div>
+        <div class="bd-grid2">
+          <label class="bd-field">
+            Duration (h)<span class="bd-hint">typical 48–120 h</span>
+            <input type="number" [(ngModel)]="cfgDuration" min="1" max="300" />
+          </label>
+          <label class="bd-field">
+            Time step (min)<span class="bd-hint">smaller = more detail</span>
+            <input type="number" [(ngModel)]="cfgDtMinutes" min="0.1" max="60" step="0.5" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      <div class="bd-info">
+        Recovery prompts will appear within the first
+        <strong>{{ recoveryWindowH }} h</strong> ({{ (cfgDuration * 0.4).toFixed(0) }}% of run).
+        The simulation streams live data via SSE from <code>{{ apiBase }}</code>.
+      </div>
+
+      <!-- Start button -->
+      <button class="bd-start-btn" (click)="startSim()" [disabled]="cfgLoading">
+        {{ cfgLoading ? 'Starting…' : '▶  Start Simulation' }}
+      </button>
+
+    </div>
+  </div>
+</ng-container>
+
+<!-- ── Dashboard stage ─────────────────────────────────────────────────── -->
+<ng-container *ngIf="stage === 'dashboard'">
+  <div class="bd-dash" [style.height]="height">
+
+    <!-- Top bar -->
+    <div class="bd-topbar">
+      <span class="bd-app-title">⚗ Bioreactor Simulation Dashboard</span>
+      <div class="bd-progress-wrap">
+        <div class="bd-track">
+          <div class="bd-fill" [style.width.%]="progress"></div>
+        </div>
+        <span class="bd-prog-label">
+          {{ state ? 't = ' + state.time_h.toFixed(1) + ' / ' + duration + ' h' : '—' }}
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="bd-live-dot" [class.live]="connected"></div>
+        <button class="bd-stop-btn" (click)="stopSim()">■ Stop</button>
+      </div>
+    </div>
+
+    <!-- Error banner -->
+    <div class="bd-err-banner" *ngIf="sseError">{{ sseError }}</div>
+
+    <!-- Batch info strip -->
+    <div class="bd-batch-bar" *ngIf="batch">
+      <div class="bd-bf"><span class="bd-bfl">Batch ID</span><span class="bd-bfv mono">{{ batch.batch_id }}</span></div>
+      <div class="bd-bf"><span class="bd-bfl">Product</span><span class="bd-bfv">{{ batch.product_name }}</span></div>
+      <div class="bd-bf"><span class="bd-bfl">Order No</span><span class="bd-bfv mono">{{ batch.order_no }}</span></div>
+      <div class="bd-bf"><span class="bd-bfl">Started</span><span class="bd-bfv">{{ formatTime(batch.started_at) }}</span></div>
+      <div class="bd-bf"><span class="bd-bfl">Duration</span><span class="bd-bfv">{{ duration }} h</span></div>
+      <div class="bd-bf">
+        <span class="bd-bfl">Status</span>
+        <span class="bd-status-badge"
+              [style.background]="statusBg"
+              [style.color]="statusColor">{{ statusLabel }}</span>
+      </div>
+    </div>
+
+    <!-- Recovery bar -->
+    <div class="bd-recov-row">
+      <app-recovery-bar
+        [prompt]="state?.recovery_prompt ?? null"
+        [busy]="recoveryBusy"
+        (applyRequest)="onApplyRecovery($event)"
+        (declineRequest)="onDeclineRecovery($event)"
+      />
+    </div>
+
+    <!-- Main grid: 2D model | 2×3 charts -->
+    <div class="bd-main-grid">
+      <div class="bd-model-col">
+        <app-bioreactor-model [state]="state" [activeFaults]="activeFaults" />
+      </div>
+      <div class="bd-charts-grid">
+        <div *ngFor="let cfg of chartConfigs" class="bd-chart-cell">
+          <app-chart-panel
+            [config]="cfg"
+            [data]="chartData"
+            [duration]="duration"
+            [faultEvents]="faultEvents"
+            [recoveryEvents]="recoveryEvents"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Fault panel -->
+    <div class="bd-fault-row">
+      <app-fault-list
+        [allFaults]="allFaults"
+        [activeFaults]="activeFaults"
+        [recoveredFaults]="recoveredFaults"
+        [simRunning]="connected && !finished"
+        [triggerPending]="triggerPending"
+        [triggerError]="triggerError"
+        [triggerSuccess]="triggerSuccess"
+        (triggerFaultRequest)="onTriggerFault($event)"
+      />
+    </div>
+
+  </div>
+</ng-container>

@@ -1,0 +1,113 @@
+<div class="page">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="app-title">⚗ Bioreactor Simulation Dashboard</span>
+    <div class="progress-wrap">
+      <div class="track"><div class="fill" [style.width.%]="progress"></div></div>
+      <span class="prog-label">{{ state ? 't = ' + state.time_h.toFixed(1) + ' / ' + duration + ' h' : '—' }}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="dot" [class.live]="connected"></div>
+      <button class="stop-btn" (click)="stop()">■ Stop</button>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div class="err-banner" *ngIf="error">{{ error }}</div>
+
+  <!-- Batch info strip -->
+  <div class="batch-bar" *ngIf="batch">
+    <div class="bf"><span class="bf-l">Batch ID</span><span class="bf-v mono">{{ batch.batch_id }}</span></div>
+    <div class="bf"><span class="bf-l">Product</span><span class="bf-v">{{ batch.product_name }}</span></div>
+    <div class="bf"><span class="bf-l">Order No</span><span class="bf-v mono">{{ batch.order_no }}</span></div>
+    <div class="bf"><span class="bf-l">Started</span><span class="bf-v">{{ formatTime(batch.started_at) }}</span></div>
+    <div class="bf"><span class="bf-l">Duration</span><span class="bf-v">{{ duration }} h</span></div>
+    <div class="bf">
+      <span class="bf-l">Status</span>
+      <span class="status-badge" [style.background]="statusBg" [style.color]="statusColor">{{ statusLabel }}</span>
+    </div>
+  </div>
+
+  <!-- Recovery bar -->
+  <div class="recov-row">
+    <app-recovery-bar
+      [prompt]="state?.recovery_prompt ?? null"
+      [busy]="recoveryBusy"
+      (applyRequest)="onApplyRecovery($event)"
+      (declineRequest)="onDeclineRecovery($event)"
+    />
+  </div>
+
+  <!-- Main grid: 2D model | 2×3 charts -->
+  <div class="main-grid">
+    <div class="model-col">
+      <app-bioreactor-model [state]="state" [activeFaults]="activeFaults" />
+    </div>
+    <div class="charts-grid">
+      <div *ngFor="let cfg of chartConfigs" class="chart-cell">
+        <app-chart-panel
+          [config]="cfg"
+          [data]="chartData"
+          [duration]="duration"
+          [faultEvents]="faultEvents"
+          [recoveryEvents]="recoveryEvents"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- Fault panel -->
+  <div class="fault-row">
+    <app-fault-list
+      [allFaults]="allFaults"
+      [activeFaults]="activeFaults"
+      [recoveredFaults]="recoveredFaults"
+      [simRunning]="connected && !finished"
+      [triggerPending]="triggerPending"
+      [triggerError]="triggerError"
+      [triggerSuccess]="triggerSuccess"
+      (triggerFaultRequest)="onTriggerFault($event)"
+    />
+  </div>
+
+</div>
+
+<style>
+.page { height:100vh; display:flex; flex-direction:column; background:#f8fafc; overflow:hidden; }
+
+/* Top bar */
+.topbar { display:flex; align-items:center; gap:16px; padding:7px 16px; background:#fff; border-bottom:1px solid #e2e8f0; flex-shrink:0; }
+.app-title { font-size:14px; font-weight:700; color:#0f172a; white-space:nowrap; flex:0 0 auto; }
+.progress-wrap { flex:1; display:flex; align-items:center; gap:10px; }
+.track { flex:1; height:5px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+.fill { height:100%; background:linear-gradient(90deg,#3b82f6,#22c55e); border-radius:99px; transition:width .5s ease; }
+.prog-label { font-size:11px; color:#64748b; font-family:monospace; white-space:nowrap; }
+.dot { width:8px; height:8px; border-radius:50%; background:#d1d5db; }
+.dot.live { background:#22c55e; box-shadow:0 0 6px #22c55e88; }
+.stop-btn { background:#fff; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; padding:4px 12px; font-size:11px; font-weight:600; cursor:pointer; }
+
+/* Error */
+.err-banner { background:#fef2f2; padding:4px 16px; font-size:11px; color:#b91c1c; flex-shrink:0; border-bottom:1px solid #fecaca; }
+
+/* Batch strip */
+.batch-bar { display:flex; align-items:center; gap:0; padding:5px 16px; background:#fff; border-bottom:1px solid #e2e8f0; flex-shrink:0; flex-wrap:wrap; }
+.bf { display:flex; flex-direction:column; gap:1px; padding:3px 16px 3px 0; margin-right:12px; border-right:1px solid #f1f5f9; }
+.bf:last-child { border-right:none; }
+.bf-l { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; }
+.bf-v { font-size:12px; font-weight:600; color:#1e293b; }
+.bf-v.mono { font-family:monospace; }
+.status-badge { font-size:11px; font-weight:700; padding:1px 8px; border-radius:99px; }
+
+/* Recovery */
+.recov-row { padding:4px 12px; flex-shrink:0; }
+
+/* Main grid */
+.main-grid { flex:1; display:grid; grid-template-columns:2fr 3fr; gap:8px; padding:0 12px; min-height:0; }
+.model-col { min-height:0; overflow:hidden; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr 1fr; gap:6px; min-height:0; }
+.chart-cell { min-height:0; overflow:hidden; }
+
+/* Fault row */
+.fault-row { height:185px; flex-shrink:0; padding:4px 12px 8px; }
+</style>

@@ -29,8 +29,14 @@ runner = SimulationRunner()
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
+# React build
 _DIST       = os.path.join(_ROOT, "frontend", "dist")
 _INDEX_HTML = os.path.join(_DIST, "index.html")
+
+# Angular build (ng build outputs to frontend-angular/dist/browser/)
+_NG_DIST    = os.path.join(_ROOT, "frontend-angular", "dist", "browser")
+_NG_INDEX   = os.path.join(_NG_DIST, "index.html")
+
 _MODEL_PNG  = os.path.join(_ROOT, "bioreactormodel.png")
 
 # ── Request / response models ─────────────────────────────────────────────────
@@ -131,45 +137,67 @@ async def simulation_stream(request: Request):
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-# ── Static assets from React build (JS / CSS only) ───────────────────────────
-# Mount /assets → dist/assets so the hashed JS/CSS bundles are served.
-# This must come AFTER the /api routes so API calls win.
+# ── React: static assets + SPA fallback ───────────────────────────────────────
 
 _ASSETS_DIR = os.path.join(_DIST, "assets")
 if os.path.isdir(_ASSETS_DIR):
-    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="assets")
+    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="react-assets")
 
-# Serve bioreactor schematic PNG
+# ── Angular: all /ng/* paths ──────────────────────────────────────────────────
+# Angular is built with --base-href /ng/.  We serve static files explicitly so
+# both /ng and /ng/ work, and all Angular SPA routes fall back to index.html.
+
+@app.get("/ng")
+@app.get("/ng/")
+def serve_angular_root():
+    if os.path.isfile(_NG_INDEX):
+        return FileResponse(_NG_INDEX, media_type="text/html")
+    return HTMLResponse(
+        "<h2>Angular not built</h2><p>Run: <code>cd frontend-angular &amp;&amp; npm install &amp;&amp; npm run build</code></p>",
+        status_code=503,
+    )
+
+@app.get("/ng/{ng_path:path}", include_in_schema=False)
+def serve_angular(ng_path: str):
+    # Try to serve the exact static file first (JS, CSS, fonts, etc.)
+    candidate = os.path.join(_NG_DIST, ng_path)
+    if ng_path and os.path.isfile(candidate):
+        return FileResponse(candidate)
+    # All other paths (Angular client-side routes) → index.html
+    if os.path.isfile(_NG_INDEX):
+        return FileResponse(_NG_INDEX, media_type="text/html")
+    return HTMLResponse(
+        "<h2>Angular not built</h2><p>Run: <code>cd frontend-angular &amp;&amp; npm install &amp;&amp; npm run build</code></p>",
+        status_code=503,
+    )
+
+# Serve bioreactor schematic PNG (used by both frontends)
 @app.get("/bioreactormodel.png")
 def serve_model_png():
     if not os.path.exists(_MODEL_PNG):
         raise HTTPException(404, "bioreactormodel.png not found")
     return FileResponse(_MODEL_PNG, media_type="image/png")
 
-# ── SPA catch-all — serves index.html for every remaining GET path ────────────
-# React Router / state navigation needs the shell HTML for any URL the user
-# lands on directly (bookmark, refresh, direct link).
+# ── React SPA catch-all ────────────────────────────────────────────────────────
 
-def _serve_index():
+NOT_BUILT_HTML = """<!doctype html><html><body style="font:14px system-ui;padding:40px;background:#f8fafc;color:#1e293b">
+<h2>Frontend not built</h2>
+<p>React (port 8000): <code>cd frontend &amp;&amp; npm install &amp;&amp; npm run build</code></p>
+<p>Angular (port 8000/ng): <code>cd frontend-angular &amp;&amp; npm install &amp;&amp; npm run build</code></p>
+<p>Or run both dev servers: React on <strong>:5173</strong>, Angular on <strong>:4200</strong></p>
+</body></html>"""
+
+def _serve_react_index():
     if os.path.isfile(_INDEX_HTML):
         return FileResponse(_INDEX_HTML, media_type="text/html")
-    return HTMLResponse(
-        """<!doctype html><html><body style="font:14px system-ui;padding:40px;background:#0f1117;color:#e2e8f0">
-        <h2>Frontend not built yet</h2>
-        <p>Run the following commands, then restart the server:</p>
-        <pre style="background:#1a202c;padding:16px;border-radius:6px;margin-top:12px">
-cd frontend
-npm install
-npm run build</pre>
-        </body></html>""",
-        status_code=503,
-    )
+    return HTMLResponse(NOT_BUILT_HTML, status_code=503)
 
 @app.get("/")
 def root():
-    return _serve_index()
+    return _serve_react_index()
 
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_fallback(full_path: str):
-    # Let mounted routes (StaticFiles /assets) win; this only fires for everything else.
-    return _serve_index()
+    # /ng/* is handled by the Angular StaticFiles mount above.
+    # Everything else falls back to the React index.
+    return _serve_react_index()

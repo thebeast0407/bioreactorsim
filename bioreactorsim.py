@@ -1100,7 +1100,7 @@ class BioreactorSimulator:
             for f in still_active:
                 cat = f["category"].upper()[:4]
                 if f.get("_awaiting_input"):
-                    deadline = f.get("_prompt_time_h", 0) + 2.0
+                    deadline = f.get("_prompt_time_h", 0) + self.duration_hours * 0.40
                     rec = RECOVERY_NAMES.get(f["id"], "Recovery")
                     box_lines.append(
                         f"\u26a0 [{cat}] {f['name']}"
@@ -1140,7 +1140,7 @@ class BioreactorSimulator:
         fname    = f['name']
         fid      = f['id']
         rec_name = RECOVERY_NAMES.get(fid, 'Standard Recovery')
-        deadline = t_now + 2.0
+        deadline = t_now + self.duration_hours * 0.40
         ln['rec_info_txt'].set_text(
             f'  \u26a0  {fname}  \u203a  {rec_name}'
             f'  \u2502  auto-N at t={deadline:.1f} h'
@@ -1169,7 +1169,7 @@ class BioreactorSimulator:
 
     def _check_recovery_prompts(self) -> None:
         """Button-based recovery UI embedded in the figure.
-        Auto-declines if no response within 2 simulated hours."""
+        Auto-declines if no response within 40% of the batch duration."""
         if not self.fault_engine:
             return
         fe    = self.fault_engine
@@ -1177,21 +1177,22 @@ class BioreactorSimulator:
         if ln is None:
             return
         t_now = self.state.time
+        recovery_window = self.duration_hours * 0.40
 
         # timeout check on the active prompt
         for f in fe.faults:
             if f.get('_awaiting_input') and not f.get('_recovered'):
                 elapsed = t_now - f.get('_prompt_time_h', t_now)
-                if elapsed >= 2.0:
+                if elapsed >= recovery_window:
                     f['_awaiting_input'] = False
                     fname = f['name']
                     self._hide_recovery_bar(ln)
                     print(
-                        f'\n  \u23f1  No response after 2 simulated hours \u2014 '
+                        f'\n  \u23f1  No response within recovery window \u2014 '
                         f'recovery auto-declined for {fname!r}.\n'
                     )
                 else:
-                    remaining = 2.0 - elapsed
+                    remaining = recovery_window - elapsed
                     fname     = f['name']
                     rec_name  = RECOVERY_NAMES.get(f['id'], 'Recovery')
                     ln['rec_info_txt'].set_text(

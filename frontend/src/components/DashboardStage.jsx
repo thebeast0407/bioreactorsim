@@ -5,22 +5,23 @@ import ChartPanel from './ChartPanel.jsx'
 import FaultList from './FaultList.jsx'
 import RecoveryBar from './RecoveryBar.jsx'
 
-// ── Downsampling ──────────────────────────────────────────────────────────────
-// Keep the FULL timeline visible: never drop early points (that leaves gaps
-// when the x-axis is fixed). Instead, thin uniformly once we exceed the cap.
+// ── Downsampling — preserve full timeline, never drop early points ─────────────
 const DATA_CAP = 3000
 
 function mergePoint(data, point) {
   const next = [...data, point]
   if (next.length <= DATA_CAP) return next
-  // Thin by keeping every other point, always preserve first and last
   const thinned = next.filter((_, i) => i === 0 || i % 2 === 0)
   const last = next[next.length - 1]
   if (thinned[thinned.length - 1].time_h !== last.time_h) thinned.push(last)
   return thinned
 }
 
-// ── Chart configs ─────────────────────────────────────────────────────────────
+// ── Chart configurations — tight y-domains, alert bands only ─────────────────
+//
+//  bands: only the ALERT zone (between alert limit and hard limit) is shaded.
+//  No large red fills beyond the limits — the dashed reference lines are enough.
+//  y-domain: just 5-10% outside the hard limits.
 
 const CHART_CONFIGS = [
   {
@@ -36,13 +37,12 @@ const CHART_CONFIGS = [
     id: 'ph',
     title: 'pH',
     series: [{ key: 'pH', label: 'pH', color: '#3b82f6' }],
-    yDomain: [5.5, 8.5],
+    // Hard limits 6.5–7.8 → domain with small 0.2-unit margin either side
+    yDomain: [6.2, 8.0],
     setpoint: 7.2,
     bands: [
-      { y1: 5.5, y2: 6.5, fill: '#fee2e2', opacity: 0.45 },
-      { y1: 6.5, y2: 6.9, fill: '#fef3c7', opacity: 0.55 },
-      { y1: 7.5, y2: 7.8, fill: '#fef3c7', opacity: 0.55 },
-      { y1: 7.8, y2: 8.5, fill: '#fee2e2', opacity: 0.45 },
+      { y1: 6.5, y2: 6.9, fill: '#fef3c7', opacity: 0.65 },  // alert-low zone
+      { y1: 7.5, y2: 7.8, fill: '#fef3c7', opacity: 0.65 },  // alert-high zone
     ],
     referenceLines: [
       { y: 7.8, label: 'Limit Hi', color: '#ef4444' },
@@ -55,13 +55,12 @@ const CHART_CONFIGS = [
     id: 'temp',
     title: 'Temperature (°C)',
     series: [{ key: 'temperature_C', label: 'Temp °C', color: '#f97316' }],
-    yDomain: [26, 46],
+    // Hard limits 34–40 °C → 1 °C margin
+    yDomain: [33, 41],
     setpoint: 37.0,
     bands: [
-      { y1: 26, y2: 34,   fill: '#fee2e2', opacity: 0.45 },
-      { y1: 34, y2: 36,   fill: '#fef3c7', opacity: 0.55 },
-      { y1: 38.5, y2: 40, fill: '#fef3c7', opacity: 0.55 },
-      { y1: 40, y2: 46,   fill: '#fee2e2', opacity: 0.45 },
+      { y1: 34,   y2: 36,   fill: '#fef3c7', opacity: 0.65 },
+      { y1: 38.5, y2: 40,   fill: '#fef3c7', opacity: 0.65 },
     ],
     referenceLines: [
       { y: 40,   label: 'Limit Hi', color: '#ef4444' },
@@ -74,13 +73,12 @@ const CHART_CONFIGS = [
     id: 'do',
     title: 'Dissolved Oxygen (%)',
     series: [{ key: 'dissolved_oxygen_pct', label: 'DO %', color: '#06b6d4' }],
-    yDomain: [0, 115],
+    // Hard limits 10–100 % → 8 % margin
+    yDomain: [2, 108],
     setpoint: 40,
     bands: [
-      { y1: 0,   y2: 10,  fill: '#fee2e2', opacity: 0.45 },
-      { y1: 10,  y2: 20,  fill: '#fef3c7', opacity: 0.55 },
-      { y1: 90,  y2: 100, fill: '#fef3c7', opacity: 0.55 },
-      { y1: 100, y2: 115, fill: '#fee2e2', opacity: 0.45 },
+      { y1: 10,  y2: 20,  fill: '#fef3c7', opacity: 0.65 },
+      { y1: 90,  y2: 100, fill: '#fef3c7', opacity: 0.65 },
     ],
     referenceLines: [
       { y: 100, label: 'Limit Hi', color: '#ef4444' },
@@ -114,6 +112,15 @@ function transformPoint(raw) {
   }
 }
 
+function formatTime(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleString(undefined, {
+    month: 'short', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DashboardStage({ params, onBack }) {
@@ -123,8 +130,8 @@ export default function DashboardStage({ params, onBack }) {
   const [connected,      setConnected]      = useState(false)
   const [sseError,       setSseError]       = useState(null)
   const [allFaults,      setAllFaults]      = useState([])
-  const [faultEvents,    setFaultEvents]    = useState([])    // { time_h, name, category }
-  const [recoveryEvents, setRecoveryEvents] = useState([])   // { time_h, name, category }
+  const [faultEvents,    setFaultEvents]    = useState([])
+  const [recoveryEvents, setRecoveryEvents] = useState([])
   const seenFaultIds    = useRef(new Set())
   const seenRecoveryIds = useRef(new Set())
   const esRef = useRef(null)
@@ -144,7 +151,6 @@ export default function DashboardStage({ params, onBack }) {
         setLatestState(data)
         if (data.finished) setSimFinished(true)
 
-        // Collect new fault trigger events
         const allTriggered = [...(data.active_faults || []), ...(data.recovered_faults || [])]
         const newFaults = []
         for (const f of allTriggered) {
@@ -155,7 +161,6 @@ export default function DashboardStage({ params, onBack }) {
         }
         if (newFaults.length) setFaultEvents(prev => [...prev, ...newFaults])
 
-        // Collect new recovery events
         const newRecoveries = []
         for (const f of (data.recovered_faults || [])) {
           const rkey = f.id + '_rec'
@@ -189,21 +194,21 @@ export default function DashboardStage({ params, onBack }) {
   const duration        = latestState?.duration_hours   || params?.duration_hours || 48
   const progress        = latestState ? Math.min(100, (latestState.time_h / duration) * 100) : 0
 
+  const batchId     = params?.batch_id     || '—'
+  const productName = params?.product_name || '—'
+  const orderNo     = params?.order_no     || '—'
+  const startedAt   = params?.started_at   || null
+
+  const statusLabel = simFinished ? 'Complete' : connected ? 'Running' : 'Connecting…'
+  const statusColor = simFinished ? '#15803d'  : connected ? '#2563eb' : '#94a3b8'
+  const statusBg    = simFinished ? '#dcfce7'  : connected ? '#dbeafe' : '#f1f5f9'
+
   return (
     <div style={s.page}>
 
-      {/* Top bar */}
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <div style={s.topBar}>
-        <div style={s.topLeft}>
-          <span style={s.appTitle}>⚗ Bioreactor Dashboard</span>
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: connected ? '#22c55e' : '#d1d5db',
-            boxShadow: connected ? '0 0 6px #22c55e88' : 'none',
-          }} />
-          {simFinished && <span style={s.doneTag}>Complete</span>}
-        </div>
-
+        <span style={s.appTitle}>⚗ Bioreactor Simulation Dashboard</span>
         <div style={s.progressWrap}>
           <div style={s.track}>
             <div style={{ ...s.fill, width: `${progress}%` }} />
@@ -212,18 +217,35 @@ export default function DashboardStage({ params, onBack }) {
             {latestState ? `t = ${latestState.time_h.toFixed(1)} / ${duration} h` : '—'}
           </span>
         </div>
-
-        <button onClick={handleStop} style={s.stopBtn}>■ Stop</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: connected ? '#22c55e' : '#d1d5db', boxShadow: connected ? '0 0 6px #22c55e88' : 'none' }} />
+          <button onClick={handleStop} style={s.stopBtn}>■ Stop</button>
+        </div>
       </div>
 
       {sseError && <div style={s.errBanner}>{sseError}</div>}
 
-      {/* Recovery bar */}
+      {/* ── Batch information strip ───────────────────────────────────────── */}
+      <div style={s.batchBar}>
+        <BatchField label="Batch ID"     value={batchId} mono />
+        <BatchField label="Product"      value={productName} />
+        <BatchField label="Order No"     value={orderNo} mono />
+        <BatchField label="Started"      value={formatTime(startedAt)} />
+        <BatchField label="Duration"     value={`${duration} h`} />
+        <div style={s.batchField}>
+          <span style={s.bfLabel}>Status</span>
+          <span style={{ ...s.bfValue, background: statusBg, color: statusColor, padding: '1px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
+            {statusLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Recovery bar ─────────────────────────────────────────────────── */}
       <div style={s.recovRow}>
         <RecoveryBar prompt={recoveryPrompt} />
       </div>
 
-      {/* Main grid: 2D model | charts */}
+      {/* ── Main grid: 2D model | 2×3 charts ─────────────────────────────── */}
       <div style={s.mainGrid}>
         <div style={s.modelCol}>
           <BioreactorModel state={latestState} activeFaults={activeFaults} />
@@ -248,7 +270,7 @@ export default function DashboardStage({ params, onBack }) {
         </div>
       </div>
 
-      {/* Fault panel */}
+      {/* ── Fault panel ───────────────────────────────────────────────────── */}
       <div style={s.faultRow}>
         <FaultList
           allFaults={allFaults}
@@ -261,22 +283,56 @@ export default function DashboardStage({ params, onBack }) {
   )
 }
 
+// ── Batch field sub-component ─────────────────────────────────────────────────
+
+function BatchField({ label, value, mono }) {
+  return (
+    <div style={s.batchField}>
+      <span style={s.bfLabel}>{label}</span>
+      <span style={{ ...s.bfValue, fontFamily: mono ? 'monospace' : 'inherit' }}>{value}</span>
+    </div>
+  )
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const s = {
   page: { height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', overflow: 'hidden' },
-  topBar: { display: 'flex', alignItems: 'center', gap: 16, padding: '8px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0 },
-  topLeft: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto' },
-  appTitle: { fontSize: 15, fontWeight: 700, color: '#0f172a' },
-  doneTag: { fontSize: 11, color: '#15803d', background: '#dcfce7', border: '1px solid #86efac', padding: '1px 8px', borderRadius: 99 },
+
+  topBar: {
+    display: 'flex', alignItems: 'center', gap: 16,
+    padding: '7px 16px', background: '#fff',
+    borderBottom: '1px solid #e2e8f0', flexShrink: 0,
+  },
+  appTitle: { fontSize: 14, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', flex: '0 0 auto' },
   progressWrap: { flex: 1, display: 'flex', alignItems: 'center', gap: 10 },
-  track: { flex: 1, height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' },
+  track: { flex: 1, height: 5, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' },
   fill: { height: '100%', background: 'linear-gradient(90deg,#3b82f6,#22c55e)', borderRadius: 99, transition: 'width 0.5s ease' },
-  progLabel: { fontSize: 12, color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' },
-  stopBtn: { background: '#fff', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 },
-  errBanner: { background: '#fef2f2', padding: '5px 16px', fontSize: 12, color: '#b91c1c', flexShrink: 0, borderBottom: '1px solid #fecaca' },
-  recovRow: { padding: '5px 12px', flexShrink: 0 },
-  mainGrid: { flex: 1, display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, padding: '0 12px', minHeight: 0 },
+  progLabel: { fontSize: 11, color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' },
+  stopBtn: { background: '#fff', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
+
+  errBanner: { background: '#fef2f2', padding: '4px 16px', fontSize: 11, color: '#b91c1c', flexShrink: 0, borderBottom: '1px solid #fecaca' },
+
+  // Batch info strip
+  batchBar: {
+    display: 'flex', alignItems: 'center', gap: 0,
+    padding: '5px 16px', background: '#fff',
+    borderBottom: '1px solid #e2e8f0', flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  batchField: {
+    display: 'flex', flexDirection: 'column', gap: 1,
+    padding: '3px 16px 3px 0', marginRight: 12,
+    borderRight: '1px solid #f1f5f9', lastChild: { borderRight: 'none' },
+  },
+  bfLabel: { fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' },
+  bfValue: { fontSize: 12, fontWeight: 600, color: '#1e293b' },
+
+  recovRow: { padding: '4px 12px', flexShrink: 0 },
+
+  mainGrid: { flex: 1, display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 8, padding: '0 12px', minHeight: 0 },
   modelCol: { minHeight: 0, overflow: 'hidden', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' },
   chartsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr 1fr', gap: 6, minHeight: 0 },
   chartCell: { minHeight: 0, overflow: 'hidden' },
-  faultRow: { height: 190, flexShrink: 0, padding: '5px 12px 8px' },
+  faultRow: { height: 185, flexShrink: 0, padding: '4px 12px 8px' },
 }

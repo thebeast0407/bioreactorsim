@@ -1,0 +1,89 @@
+<div class="page">
+  <div class="card">
+
+    <div class="header">
+      <span class="logo">⚗</span>
+      <div>
+        <h1>Bioreactor Simulation</h1>
+        <p class="sub">Configure batch parameters, then start</p>
+      </div>
+    </div>
+
+    <div class="error" *ngIf="error">{{ error }}</div>
+
+    <!-- Batch Information -->
+    <section>
+      <h2 class="section-label">Batch Information</h2>
+      <div class="grid2">
+        <label class="field">
+          <span>Batch ID</span>
+          <input [(ngModel)]="batchId" placeholder="BTH-2024-001" />
+        </label>
+        <label class="field">
+          <span>Product Name</span>
+          <input [(ngModel)]="productName" placeholder="Recombinant mAb" />
+        </label>
+        <label class="field">
+          <span>Order No</span>
+          <input [(ngModel)]="orderNo" placeholder="ORD-45821" />
+        </label>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Simulation Parameters -->
+    <section>
+      <h2 class="section-label">Simulation Parameters</h2>
+      <div class="grid2">
+        <label class="field">
+          <span>Batch Duration</span>
+          <div class="input-row">
+            <input type="number" [(ngModel)]="duration" min="1" max="240" step="1" />
+            <span class="hint">hours</span>
+          </div>
+        </label>
+        <label class="field">
+          <span>Step Frequency</span>
+          <div class="input-row">
+            <input type="number" [(ngModel)]="dtMinutes" min="0.1" max="60" step="0.1" />
+            <span class="hint">min / step</span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <div class="info-box">
+      <strong>Fault injection</strong> is available from the live dashboard —
+      any of the 22 process / sensor / CPP faults can be triggered with a single click.
+      Recovery window is <strong>40% of batch duration</strong> ({{ recoveryWindowH }} h for this run).
+    </div>
+
+    <button class="start-btn" (click)="start()" [disabled]="loading">
+      {{ loading ? 'Starting…' : '▶  Start Simulation' }}
+    </button>
+
+  </div>
+</div>
+
+<style>
+.page { min-height:100vh; background:#f8fafc; display:flex; align-items:center; justify-content:center; padding:24px; }
+.card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:36px 40px; width:100%; max-width:560px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.header { display:flex; align-items:center; gap:16px; margin-bottom:28px; }
+.logo { font-size:44px; line-height:1; }
+h1 { font-size:22px; font-weight:700; color:#0f172a; margin-bottom:4px; }
+.sub { font-size:13px; color:#64748b; }
+.error { background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; color:#b91c1c; font-size:13px; margin-bottom:20px; }
+section { margin-bottom:20px; }
+.section-label { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
+.field { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; color:#374151; }
+.field input { padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; color:#111827; outline:none; }
+.input-row { display:flex; align-items:center; gap:8px; }
+.input-row input { width:100px; }
+.hint { font-size:11px; color:#9ca3af; white-space:nowrap; }
+.divider { height:1px; background:#f1f5f9; margin:4px 0 20px; }
+.info-box { background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; font-size:12px; color:#0369a1; line-height:1.5; margin-bottom:24px; }
+.start-btn { width:100%; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:13px 0; font-size:15px; font-weight:600; cursor:pointer; }
+.start-btn:disabled { opacity:.6; cursor:not-allowed; }
+</style>
