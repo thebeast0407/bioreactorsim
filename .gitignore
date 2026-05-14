@@ -1,0 +1,59 @@
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Python ───────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── Simulation output files ───────────────────────────────────────────────────
+bioreactor_run.csv
+bioreactor_run_dashboard.png
+
+# ── Environment & secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Angular frontend ─────────────────────────────────────────────────────────
+frontend-angular/node_modules/
+frontend-angular/.angular/
+frontend-angular/dist/
+
+# ── React frontend ────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Logs & temp ──────────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+temp/

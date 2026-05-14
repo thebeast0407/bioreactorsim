@@ -39,27 +39,20 @@
     />
   </div>
 
-  <!-- Main grid: 2D model | 2×3 charts -->
+  <!-- Main grid: bioreactor model panel | charts grid panel -->
   <div class="main-grid">
-    <div class="model-col">
-      <app-bioreactor-model [state]="state" [activeFaults]="activeFaults" />
-    </div>
-    <div class="charts-grid">
-      <div *ngFor="let cfg of chartConfigs" class="chart-cell">
-        <app-chart-panel
-          [config]="cfg"
-          [data]="chartData"
-          [duration]="duration"
-          [faultEvents]="faultEvents"
-          [recoveryEvents]="recoveryEvents"
-        />
-      </div>
-    </div>
+    <app-bioreactor-model-panel [state]="state" [activeFaults]="activeFaults" />
+    <app-charts-grid
+      [chartData]="chartData"
+      [duration]="duration"
+      [faultEvents]="faultEvents"
+      [recoveryEvents]="recoveryEvents"
+    />
   </div>
 
-  <!-- Fault panel -->
+  <!-- Fault injection panel -->
   <div class="fault-row">
-    <app-fault-list
+    <app-fault-injection-panel
       [allFaults]="allFaults"
       [activeFaults]="activeFaults"
       [recoveredFaults]="recoveredFaults"
@@ -104,9 +97,6 @@
 
 /* Main grid */
 .main-grid { flex:1; display:grid; grid-template-columns:2fr 3fr; gap:8px; padding:0 12px; min-height:0; }
-.model-col { min-height:0; overflow:hidden; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
-.charts-grid { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr 1fr; gap:6px; min-height:0; }
-.chart-cell { min-height:0; overflow:hidden; }
 
 /* Fault row */
 .fault-row { height:185px; flex-shrink:0; padding:4px 12px 8px; }
